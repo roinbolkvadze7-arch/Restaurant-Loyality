@@ -305,6 +305,7 @@
     <div id="reader"></div>
     <button id="startScan" class="scan-btn">📷 სკანერის ჩართვა</button>
     <button id="stopScan" class="scan-btn" style="display:none">⏹️ გაჩერება</button>
+    <button class="scan-btn" onclick="testConnection()" style="font-size: 12px;">🔧 კავშირის ტესტი</button>
     
     <div style="margin-top: 16px; font-size: 12px; color: var(--text-muted);">
       ან შეიყვანეთ ტელეფონის ნომერი:
@@ -371,6 +372,10 @@
 // ======= CONFIG — შეცვალე შენი Supabase მონაცემებით =======
 const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// 
+// მაგალითად:
+// const SUPABASE_URL = 'https://abcdefghijklmnop.supabase.co';
+// const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 // =========================================================
 
 const { createClient } = supabase;
@@ -381,26 +386,54 @@ let currentCustomer = null;
 let todayTransactions = [];
 
 // QR Scanner Functions
-function startScanner() {
-  const config = { 
-    fps: 10, 
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0
-  };
-  
-  html5QrCode = new Html5Qrcode("reader");
-  html5QrCode.start(
-    { facingMode: "environment" },
-    config,
-    onScanSuccess,
-    onScanFailure
-  ).then(() => {
-    document.getElementById('startScan').style.display = 'none';
-    document.getElementById('stopScan').style.display = 'inline-block';
-  }).catch(err => {
+async function startScanner() {
+  try {
+    // First check camera permissions
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+    
+    const config = { 
+      fps: 10, 
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0
+    };
+    
+    html5QrCode = new Html5Qrcode("reader");
+    
+    // Get available cameras
+    const devices = await Html5Qrcode.getCameras();
+    if (devices && devices.length) {
+      const cameraId = devices[devices.length - 1].id; // Use back camera if available
+      
+      await html5QrCode.start(
+        cameraId,
+        config,
+        onScanSuccess,
+        onScanFailure
+      );
+      
+      document.getElementById('startScan').style.display = 'none';
+      document.getElementById('stopScan').style.display = 'inline-block';
+      showSuccess('კამერა წარმატებით ჩაირთო! დაასკანერეთ QR კოდი.');
+      
+    } else {
+      throw new Error('კამერა ვერ მოიძებნა');
+    }
+    
+  } catch (err) {
     console.error('Scanner start failed:', err);
-    showError('კამერის ჩართვა ვერ მოხერხდა. გთხოვთ, ნების დართვა გაეცით.');
-  });
+    let errorMsg = 'კამერის ჩართვა ვერ მოხერხდა.';
+    
+    if (err.name === 'NotAllowedError') {
+      errorMsg = 'კამერის ნებართვა საჭიროა. Settings → Site Permissions → Camera → Allow';
+    } else if (err.name === 'NotFoundError') {
+      errorMsg = 'კამერა ვერ მოიძებნა. გთხოვთ, მოწყობილობას კამერა ჰქონდეს.';
+    } else if (err.name === 'NotSupportedError') {
+      errorMsg = 'HTTPS კავშირი საჭიროა QR სკანირებისთვის.';
+    }
+    
+    showError(errorMsg + ' სცადეთ ტელეფონის ნომრით ძებნა.');
+  }
 }
 
 function stopScanner() {
@@ -476,7 +509,18 @@ async function searchByPhone() {
     showError('შეიყვანეთ ტელეფონის ნომერი');
     return;
   }
-  await loadCustomerByPhone(phone);
+  
+  // Show loading
+  document.querySelector('button[onclick="searchByPhone()"]').disabled = true;
+  document.querySelector('button[onclick="searchByPhone()"]').textContent = '🔍 იძებნება...';
+  
+  try {
+    await loadCustomerByPhone(phone);
+  } finally {
+    // Reset button
+    document.querySelector('button[onclick="searchByPhone()"]').disabled = false;
+    document.querySelector('button[onclick="searchByPhone()"]').textContent = '🔍 ძებნა';
+  }
 }
 
 function displayCustomerInfo(customer) {
@@ -665,8 +709,50 @@ document.getElementById('manualPhone').addEventListener('keypress', function(e) 
   }
 });
 
+// Test database connection
+async function testDatabaseConnection() {
+  try {
+    const { data, error } = await db.from('guests').select('count', { count: 'exact', head: true });
+    
+    if (error) {
+      console.error('Database connection error:', error);
+      showError('მონაცემთა ბაზასთან კავშირი ვერ დამყარდა. შეამოწმეთ Supabase კონფიგურაცია.');
+      return false;
+    }
+    
+    console.log('Database connected successfully');
+    return true;
+    
+  } catch (err) {
+    console.error('Database test failed:', err);
+    showError('Supabase კონფიგურაცია არასწორია. შეცვალეთ URL და KEY.');
+    return false;
+  }
+}
+
+// Manual test functions
+function testConnection() {
+  showSuccess('URL: ' + SUPABASE_URL + '\nKey: ' + (SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.substring(0, 20) + '...' : 'არ არის'));
+  testDatabaseConnection();
+}
+
 // Initialize
-renderTodayTransactions();
+async function initialize() {
+  renderTodayTransactions();
+  
+  // Test database connection
+  const dbConnected = await testDatabaseConnection();
+  
+  if (dbConnected) {
+    document.querySelector('.scanner-section').style.opacity = '1';
+    document.querySelector('.header p').textContent = 'მზად ქულების დამუშავებისთვის ✅';
+  } else {
+    document.querySelector('.scanner-section').style.opacity = '0.5';
+    document.querySelector('.header p').textContent = 'კონფიგურაცია საჭიროა ⚠️';
+  }
+}
+
+initialize();
 </script>
 
 </body>
