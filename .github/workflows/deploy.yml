@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Replace Supabase Config in index.html
+        run: |
+          sed -i "s|const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';|const SUPABASE_URL = '${{ secrets.SUPABASE_URL }}';|g" index.html
+          sed -i "s|const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';|const SUPABASE_ANON_KEY = '${{ secrets.SUPABASE_ANON_KEY }}';|g" index.html
+          
+      - name: Replace Supabase Config in admin.html  
+        run: |
+          sed -i "s|const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';|const SUPABASE_URL = '${{ secrets.SUPABASE_URL }}';|g" admin.html
+          sed -i "s|const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';|const SUPABASE_ANON_KEY = '${{ secrets.SUPABASE_ANON_KEY }}';|g" admin.html
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
