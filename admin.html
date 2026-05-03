@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ადმინ პანელი — ბონუს პროგრამა</title>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --gold: #c9a84c; --gold-light: #f5e6c0; --gold-dark: #8a6a1f;
+    --bg: #0e0e0e; --surface: #1a1a1a; --surface2: #242424;
+    --border: rgba(255,255,255,0.08); --text: #f0ede6; --text-muted: #888;
+    --success: #4caf7d; --danger: #e05555; --warning: #e0a040;
+    --radius: 14px; --radius-sm: 9px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Geologica', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-box { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 36px; width: 360px; }
+  .login-title { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px; }
+  .field input { width: 100%; padding: 11px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s; }
+  .field input:focus { border-color: var(--gold); }
+  .btn { padding: 12px 20px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; transition: opacity 0.2s; }
+  .btn-gold { background: var(--gold); color: #0e0e0e; width: 100%; }
+  .btn-gold:hover { opacity: 0.88; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+  .btn-outline { background: transparent; border: 0.5px solid var(--border); color: var(--text-muted); }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-danger { background: transparent; border: 0.5px solid rgba(224,85,85,0.3); color: var(--danger); }
+  .btn-success { background: transparent; border: 0.5px solid rgba(76,175,125,0.3); color: var(--success); }
+  .error-msg { font-size: 12px; color: var(--danger); margin-top: 8px; display: none; }
+
+  /* LAYOUT */
+  .app { display: none; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 0.5px solid var(--border); min-height: 100vh; position: fixed; left: 0; top: 0; padding: 24px 0; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 0.5px solid var(--border); margin-bottom: 12px; }
+  .sidebar-logo .name { font-size: 15px; font-weight: 500; }
+  .sidebar-logo .sub { font-size: 12px; color: var(--text-muted); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; font-size: 14px; color: var(--text-muted); transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.05); }
+  .nav-icon { font-size: 15px; }
+  .sidebar-bottom { position: absolute; bottom: 20px; width: 100%; padding: 0 20px; }
+  .main { margin-left: 220px; padding: 28px 32px; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .stat-value { font-size: 26px; font-weight: 300; color: var(--text); }
+  .stat-value.gold { color: var(--gold); }
+  .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* SECTION */
+  .section { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; }
+  .section-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 0.5px solid var(--border); }
+  .section-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .section-body { padding: 20px; }
+
+  /* TABLE */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  td { padding: 12px; border-bottom: 0.5px solid rgba(255,255,255,0.03); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-Classic { background: rgba(138,138,138,0.15); color: #8a8a8a; border: 0.5px solid rgba(138,138,138,0.25); }
+  .badge-Silver { background: rgba(176,184,193,0.15); color: #b0b8c1; border: 0.5px solid rgba(176,184,193,0.25); }
+  .badge-Gold { background: rgba(201,168,76,0.15); color: var(--gold); border: 0.5px solid rgba(201,168,76,0.25); }
+  .badge-Platinum { background: rgba(212,224,240,0.15); color: #d4e0f0; border: 0.5px solid rgba(212,224,240,0.25); }
+
+  /* SEARCH */
+  .search-row { display: flex; gap: 10px; align-items: center; padding: 14px 20px; border-bottom: 0.5px solid var(--border); }
+  .search-input { flex: 1; padding: 9px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+  .search-input:focus { border-color: var(--gold); }
+  .filter-select { padding: 9px 12px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 13px; font-family: inherit; outline: none; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; display: none; }
+  .modal { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 28px; width: 380px; }
+  .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .pts-input { width: 100%; padding: 12px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 22px; font-family: inherit; outline: none; text-align: center; }
+  .pts-input:focus { border-color: var(--gold); }
+  .type-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .type-tab { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: inherit; text-align: center; transition: all 0.15s; }
+  .type-tab.active-add { background: rgba(76,175,125,0.1); border-color: rgba(76,175,125,0.4); color: var(--success); }
+  .type-tab.active-sub { background: rgba(224,85,85,0.1); border-color: rgba(224,85,85,0.4); color: var(--danger); }
+  .success-toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 0.5px solid rgba(76,175,125,0.4); border-radius: var(--radius-sm); padding: 12px 20px; font-size: 13px; color: var(--success); display: none; z-index: 200; }
+
+  /* NOTIF */
+  .notif-form { display: flex; flex-direction: column; gap: 12px; }
+  .notif-form select { padding: 10px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+  .notif-form textarea { padding: 12px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; outline: none; resize: vertical; min-height: 90px; }
+  .field select, .field input[type="date"], .field input[type="number"] { width: 100%; padding: 10px 14px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+
+  /* LOADER */
+  .loader { display: flex; justify-content: center; padding: 40px; }
+  .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .page { display: none; }
+  .page.active { display: block; }
+  .pts-gold { color: var(--gold); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-title">ადმინ პანელი</div>
+    <div class="login-sub">რესტორნის ბონუს სისტემა</div>
+    <div class="field"><label>Email</label><input type="email" id="adminEmail" placeholder="admin@restaurant.ge" /></div>
+    <div class="field"><label>პაროლი</label><input type="password" id="adminPass" placeholder="••••••••" /></div>
+    <div class="error-msg" id="adminErr"></div>
+    <button class="btn btn-gold" style="margin-top:6px" onclick="adminLogin()">შესვლა</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="name">ბონუს პროგრამა</div>
+      <div class="sub">ადმინ პანელი</div>
+    </div>
+    <div class="nav-item active" onclick="showPage('overview')" id="nav-overview">
+      <span class="nav-icon">◈</span> მიმოხილვა
+    </div>
+    <div class="nav-item" onclick="showPage('guests')" id="nav-guests">
+      <span class="nav-icon">◉</span> სტუმრები
+    </div>
+    <div class="nav-item" onclick="showPage('promotions')" id="nav-promotions">
+      <span class="nav-icon">🏷️</span> აქციები
+    </div>
+    <div class="nav-item" onclick="showPage('referrals')" id="nav-referrals">
+      <span class="nav-icon">🎁</span> რეფერალები
+    </div>
+    <div class="nav-item" onclick="showPage('notifications')" id="nav-notifications">
+      <span class="nav-icon">◎</span> შეტყობინებები
+    </div>
+    <div class="nav-item" onclick="showPage('history')" id="nav-history">
+      <span class="nav-icon">◷</span> ისტორია
+    </div>
+    <div class="sidebar-bottom">
+      <button class="btn btn-outline btn-sm" style="width:100%" onclick="adminLogout()">გასვლა</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div style="font-size:20px;font-weight:500;margin-bottom:20px">მიმოხილვა</div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">ბოლო რეგისტრაციები</div>
+        </div>
+        <div class="table-scroll">
+          <table id="recentTable">
+            <thead><tr><th>სახელი</th><th>ტელეფონი</th><th>დონე</th><th>ქულა</th><th>რეგისტრაცია</th></tr></thead>
+            <tbody id="recentBody"><tr><td colspan="5"><div class="loader"><div class="spinner"></div></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUESTS -->
+    <div class="page" id="page-guests">
+      <div style="font-size:20px;font-weight:500;margin-bottom:20px">სტუმრები</div>
+      <div class="section">
+        <div class="search-row">
+          <input class="search-input" id="guestSearch" placeholder="სახელი ან ტელეფონი..." oninput="searchGuests()" />
+          <select class="filter-select" id="levelFilter" onchange="searchGuests()">
+            <option value="">ყველა დონე</option>
+            <option value="Classic">Classic</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+            <option value="Platinum">Platinum</option>
+          </select>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>სახელი</th><th>ტელეფონი</th><th>Email</th><th>დონე</th><th>ქულა</th><th>ვიზიტი</th><th>მოქმედება</th></tr></thead>
+            <tbody id="guestsBody"><tr><td colspan="7"><div class="loader"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div id="guestsPagination" style="padding:14px 20px;font-size:12px;color:var(--text-muted)"></div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="page" id="page-notifications">
+      <div style="font-size:20px;font-weight:500;margin-bottom:20px">შეტყობინებების გაგზავნა</div>
+      <div class="section">
+        <div class="section-head"><div class="section-title">ახალი შეტყობინება</div></div>
+        <div class="section-body">
+          <div class="notif-form">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">მიმღები</div>
+              <select id="notifTarget">
+                <option value="all">ყველა წევრი</option>
+                <option value="Classic">Classic წევრები</option>
+                <option value="Silver">Silver წევრები</option>
+                <option value="Gold">Gold წევრები</option>
+                <option value="Platinum">Platinum წევრები</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">შეტყობინება</div>
+              <textarea id="notifText" placeholder="შეტყობინების ტექსტი..."></textarea>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn btn-gold" style="width:auto" onclick="sendNotification()">გაგზავნა</button>
+              <div id="notifSuccess" style="font-size:13px;color:var(--success);display:none"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><div class="section-title">გაგზავნილი შეტყობინებები</div></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>მიმღები</th><th>შეტყობინება</th><th>თარიღი</th></tr></thead>
+            <tbody id="notifHistory"><tr><td colspan="3"><div class="loader"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROMOTIONS -->
+    <div class="page" id="page-promotions">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:20px;font-weight:500">აქციების მართვა</div>
+        <button class="btn btn-gold btn-sm" onclick="showPromotionForm()">+ ახალი აქცია</button>
+      </div>
+      
+      <!-- Manual Birthday Bonus Trigger -->
+      <div class="section" style="margin-bottom:16px">
+        <div class="section-head">
+          <div class="section-title">დაბადების ბონუსი</div>
+        </div>
+        <div class="section-body" style="text-align:center">
+          <button class="btn btn-gold" onclick="triggerBirthdayBonus()">დღევანდელი დაბადების ბონუსების გაცემა</button>
+          <div id="birthdayResult" style="margin-top:12px;font-size:13px;color:var(--success);display:none"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>აქცია</th><th>ტიპი</th><th>ღირებულება</th><th>პერიოდი</th><th>სტატუსი</th><th>მოქმედება</th></tr></thead>
+            <tbody id="promotionsBody"><tr><td colspan="6"><div class="loader"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERRALS -->
+    <div class="page" id="page-referrals">
+      <div style="font-size:20px;font-weight:500;margin-bottom:20px">რეფერალური სტატისტიკა</div>
+      
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;" id="referralStats">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">რეფერალების ისტორია</div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>მომწვევი</th><th>მოწვეული</th><th>სტატუსი</th><th>ბონუსი</th><th>თარიღი</th></tr></thead>
+            <tbody id="referralsBody"><tr><td colspan="5"><div class="loader"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="page-history">
+      <div style="font-size:20px;font-weight:500;margin-bottom:20px">ქულების ისტორია</div>
+      <div class="section">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>სტუმარი</th><th>ქულა</th><th>ტიპი</th><th>აღწერა</th><th>თარიღი</th></tr></thead>
+            <tbody id="allHistoryBody"><tr><td colspan="5"><div class="loader"><div class="spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title" id="modalGuestName"></div>
+    <div class="modal-sub" id="modalGuestPts"></div>
+    <div class="type-tabs">
+      <button class="type-tab active-add" id="tab-add" onclick="setModalType('add')">+ დამატება</button>
+      <button class="type-tab" id="tab-sub" onclick="setModalType('sub')">− ჩამოჭრა</button>
+    </div>
+    <input class="pts-input" type="number" id="modalPtsInput" placeholder="0" min="1" />
+    <div class="field" style="margin-top:12px">
+      <label>შენიშვნა (სურვილისამებრ)</label>
+      <input type="text" id="modalNote" placeholder="მაგ. სადილი ×4" style="width:100%;padding:10px 14px;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:inherit;outline:none" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gold" style="flex:1" onclick="confirmEdit()">შენახვა</button>
+      <button class="btn btn-outline" onclick="closeModal()">გაუქმება</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROMOTION MODAL -->
+<div class="modal-overlay" id="promotionModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">ახალი აქცია</div>
+    <div class="modal-sub">შექმენით ახალი სპეციალური შეთავაზება</div>
+    
+    <div class="field">
+      <label>აქციის სახელწოდება</label>
+      <input type="text" id="promoTitle" placeholder="მაგ. პარასკევის აქცია" />
+    </div>
+    
+    <div class="field">
+      <label>აღწერა</label>
+      <textarea id="promoDesc" placeholder="აქციის დეტალები..." style="width:100%;padding:10px 14px;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;min-height:60px"></textarea>
+    </div>
+    
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1">
+        <label>დაწყების თარიღი</label>
+        <input type="date" id="promoStart" />
+      </div>
+      <div class="field" style="flex:1">
+        <label>დასრულების თარიღი</label>
+        <input type="date" id="promoEnd" />
+      </div>
+    </div>
+    
+    <div style="display:flex;gap:10px">
+      <div class="field" style="flex:1">
+        <label>აქციის ტიპი</label>
+        <select id="promoType">
+          <option value="percentage">პროცენტული ფასდაკლება</option>
+          <option value="points_multiplier">ქულების მულტიპლიკატორი</option>
+          <option value="bonus_points">ბონუს ქულები</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>ღირებულება</label>
+        <input type="number" id="promoValue" placeholder="20" min="0" step="0.1" />
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>მინიმალური შეკვეთის ღირებულება (₾)</label>
+      <input type="number" id="promoMinOrder" placeholder="0" min="0" value="0" />
+    </div>
+    
+    <div class="field">
+      <label>მიზნობრივი დონეები (არჩევითი)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="Classic" class="level-check" /> Classic</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="Silver" class="level-check" /> Silver</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="Gold" class="level-check" /> Gold</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="Platinum" class="level-check" /> Platinum</label>
+      </div>
+    </div>
+    
+    <div class="field">
+      <label>კვირის დღეები (არჩევითი)</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="1" class="day-check" /> ორშ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="2" class="day-check" /> სამშ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="3" class="day-check" /> ოთხშ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="4" class="day-check" /> ხუთშ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="5" class="day-check" /> პარ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="6" class="day-check" /> შაბ</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="checkbox" value="7" class="day-check" /> კვი</label>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn btn-gold" style="flex:1" onclick="savePromotion()">შენახვა</button>
+      <button class="btn btn-outline" onclick="closePromotionModal()">გაუქმება</button>
+    </div>
+  </div>
+</div>
+
+<div class="success-toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// ადმინ შესვლისთვის გამოიყენე Supabase Authentication-ი ან მარტივი PIN
+// ამ დემოში: email = ნებისმიერი, password = "admin2024" (შეცვალე!)
+const ADMIN_PASSWORD = 'admin2024';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allGuests = [];
+let editGuestId = null;
+let modalType = 'add';
+
+// ADMIN LOGIN (მარტივი — production-ში გამოიყენე Supabase Auth)
+function adminLogin() {
+  const email = document.getElementById('adminEmail').value;
+  const pass = document.getElementById('adminPass').value;
+  const err = document.getElementById('adminErr');
+  if (pass !== ADMIN_PASSWORD) {
+    err.textContent = 'არასწორი პაროლი';
+    err.style.display = 'block';
+    return;
+  }
+  localStorage.setItem('admin_auth', '1');
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'flex';
+  loadAll();
+}
+
+function adminLogout() {
+  localStorage.removeItem('admin_auth');
+  location.reload();
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'guests') loadGuests();
+  if (name === 'promotions') loadPromotions();
+  if (name === 'referrals') loadReferrals();
+  if (name === 'notifications') loadNotifHistory();
+  if (name === 'history') loadAllHistory();
+}
+
+async function loadAll() {
+  await loadStats();
+  await loadRecent();
+}
+
+async function loadStats() {
+  const { data } = await db.from('guests').select('level, points');
+  if (!data) return;
+  const total = data.length;
+  const totalPts = data.reduce((s, g) => s + g.points, 0);
+  const levels = { Classic: 0, Silver: 0, Gold: 0, Platinum: 0 };
+  data.forEach(g => levels[g.level] = (levels[g.level] || 0) + 1);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">სულ წევრი</div><div class="stat-value gold">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">სულ ქულა</div><div class="stat-value">${totalPts.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Gold / Platinum</div><div class="stat-value gold">${(levels.Gold + levels.Platinum)}</div></div>
+    <div class="stat-card"><div class="stat-label">Silver</div><div class="stat-value">${levels.Silver}</div></div>
+  `;
+}
+
+async function loadRecent() {
+  const { data } = await db.from('guests').select('*').order('created_at', { ascending: false }).limit(8);
+  renderGuestRows('recentBody', data, false);
+}
+
+async function loadGuests() {
+  const { data } = await db.from('guests').select('*').order('points', { ascending: false });
+  allGuests = data || [];
+  renderGuestRows('guestsBody', allGuests, true);
+}
+
+function searchGuests() {
+  const q = document.getElementById('guestSearch').value.toLowerCase();
+  const lf = document.getElementById('levelFilter').value;
+  const filtered = allGuests.filter(g =>
+    (g.name.toLowerCase().includes(q) || g.phone.includes(q)) &&
+    (!lf || g.level === lf)
+  );
+  renderGuestRows('guestsBody', filtered, true);
+}
+
+function renderGuestRows(tbodyId, data, withActions) {
+  const body = document.getElementById(tbodyId);
+  if (!data || data.length === 0) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">მონაცემი არ მოიძებნა</td></tr>';
+    return;
+  }
+  body.innerHTML = data.map(g => `
+    <tr>
+      <td style="font-weight:500">${g.name}</td>
+      <td style="color:var(--text-muted)">${g.phone}</td>
+      ${withActions ? `<td style="color:var(--text-muted);font-size:12px">${g.email || '—'}</td>` : ''}
+      <td><span class="badge badge-${g.level}">${g.level}</span></td>
+      <td class="pts-gold">${g.points.toLocaleString()}</td>
+      <td style="color:var(--text-muted);font-size:12px">${new Date(withActions ? g.last_visit : g.created_at).toLocaleDateString('ka-GE')}</td>
+      ${withActions ? `<td><button class="btn btn-outline btn-sm" onclick="openEdit('${g.id}')">კორექტირება</button></td>` : ''}
+    </tr>
+  `).join('');
+}
+
+function openEdit(guestId) {
+  const g = allGuests.find(x => x.id === guestId);
+  if (!g) return;
+  editGuestId = guestId;
+  document.getElementById('modalGuestName').textContent = g.name;
+  document.getElementById('modalGuestPts').textContent = `მიმდინარე ქულა: ${g.points.toLocaleString()}`;
+  document.getElementById('modalPtsInput').value = '';
+  document.getElementById('modalNote').value = '';
+  setModalType('add');
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function setModalType(type) {
+  modalType = type;
+  document.getElementById('tab-add').className = 'type-tab' + (type === 'add' ? ' active-add' : '');
+  document.getElementById('tab-sub').className = 'type-tab' + (type === 'sub' ? ' active-sub' : '');
+}
+
+function closeModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+async function confirmEdit() {
+  const amt = parseInt(document.getElementById('modalPtsInput').value) || 0;
+  const note = document.getElementById('modalNote').value.trim();
+  if (!amt || !editGuestId) return;
+
+  const g = allGuests.find(x => x.id === editGuestId);
+  const delta = modalType === 'add' ? amt : -amt;
+  const newPts = Math.max(0, g.points + delta);
+
+  const newLevel = newPts >= 10000 ? 'Platinum' : newPts >= 5000 ? 'Gold' : newPts >= 1000 ? 'Silver' : 'Classic';
+
+  await db.from('guests').update({ points: newPts, level: newLevel, last_visit: new Date().toISOString() }).eq('id', editGuestId);
+  await db.from('points_history').insert({ guest_id: editGuestId, amount: delta, type: 'admin', description: note || (modalType === 'add' ? 'ადმინის მიერ დამატება' : 'ადმინის მიერ ჩამოჭრა') });
+
+  closeModal();
+  showToast((delta > 0 ? '+' : '') + delta + ' ქულა — ' + g.name);
+  await loadGuests();
+  await loadStats();
+}
+
+async function sendNotification() {
+  const target = document.getElementById('notifTarget').value;
+  const msg = document.getElementById('notifText').value.trim();
+  if (!msg) return;
+  await db.from('notifications').insert({ target, message: msg });
+  document.getElementById('notifText').value = '';
+  document.getElementById('notifSuccess').textContent = 'შეტყობინება შეინახა!';
+  document.getElementById('notifSuccess').style.display = 'block';
+  setTimeout(() => document.getElementById('notifSuccess').style.display = 'none', 3000);
+  loadNotifHistory();
+}
+
+async function loadNotifHistory() {
+  const { data } = await db.from('notifications').select('*').order('sent_at', { ascending: false }).limit(20);
+  const body = document.getElementById('notifHistory');
+  if (!data || !data.length) { body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px">ჯერ არ გაგზავნილა</td></tr>'; return; }
+  body.innerHTML = data.map(n => `
+    <tr>
+      <td><span class="badge badge-${n.target === 'all' ? 'Classic' : n.target}">${n.target === 'all' ? 'ყველა' : n.target}</span></td>
+      <td style="max-width:300px;color:var(--text-muted)">${n.message}</td>
+      <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${new Date(n.sent_at).toLocaleString('ka-GE')}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadAllHistory() {
+  const { data } = await db.from('points_history').select('*, guests(name)').order('created_at', { ascending: false }).limit(50);
+  const body = document.getElementById('allHistoryBody');
+  if (!data || !data.length) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">ცარიელია</td></tr>'; return; }
+  body.innerHTML = data.map(h => `
+    <tr>
+      <td style="font-weight:500">${h.guests?.name || '—'}</td>
+      <td class="${h.amount > 0 ? 'pts-gold' : ''}" style="${h.amount < 0 ? 'color:var(--danger)' : ''}">${h.amount > 0 ? '+' : ''}${h.amount}</td>
+      <td><span class="badge badge-Classic">${h.type}</span></td>
+      <td style="color:var(--text-muted);font-size:12px">${h.description || '—'}</td>
+      <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">${new Date(h.created_at).toLocaleString('ka-GE')}</td>
+    </tr>
+  `).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// Promotion functions
+function showPromotionForm() {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 30);
+  
+  document.getElementById('promoStart').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('promoEnd').value = endDate.toISOString().split('T')[0];
+  document.getElementById('promotionModal').style.display = 'flex';
+}
+
+function closePromotionModal() {
+  document.getElementById('promotionModal').style.display = 'none';
+  document.getElementById('promoTitle').value = '';
+  document.getElementById('promoDesc').value = '';
+  document.querySelectorAll('.level-check, .day-check').forEach(cb => cb.checked = false);
+}
+
+async function savePromotion() {
+  const title = document.getElementById('promoTitle').value.trim();
+  const desc = document.getElementById('promoDesc').value.trim();
+  const start = document.getElementById('promoStart').value;
+  const end = document.getElementById('promoEnd').value;
+  const type = document.getElementById('promoType').value;
+  const value = parseFloat(document.getElementById('promoValue').value);
+  const minOrder = parseFloat(document.getElementById('promoMinOrder').value) || 0;
+  
+  if (!title || !start || !end || !value) {
+    alert('შეავსეთ ყველა სავალდებულო ველი');
+    return;
+  }
+  
+  const levels = Array.from(document.querySelectorAll('.level-check:checked')).map(cb => cb.value);
+  const days = Array.from(document.querySelectorAll('.day-check:checked')).map(cb => parseInt(cb.value));
+  
+  const { error } = await db.from('promotions').insert({
+    title, description: desc, start_date: start, end_date: end,
+    discount_type: type, discount_value: value, min_order_amount: minOrder,
+    target_levels: levels, days_of_week: days
+  });
+  
+  if (error) {
+    alert('შეცდომა: ' + error.message);
+    return;
+  }
+  
+  closePromotionModal();
+  loadPromotions();
+  showToast('აქცია წარმატებით შეიქმნა!');
+}
+
+async function loadPromotions() {
+  const { data } = await db.from('promotions').select('*').order('created_at', { ascending: false });
+  const body = document.getElementById('promotionsBody');
+  
+  if (!data || !data.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">აქციები არ მოიძებნა</td></tr>';
+    return;
+  }
+  
+  body.innerHTML = data.map(p => {
+    const isActive = p.active && new Date() >= new Date(p.start_date) && new Date() <= new Date(p.end_date);
+    const typeLabels = {
+      percentage: 'ფასდაკლება',
+      points_multiplier: 'ქულების ×',
+      bonus_points: 'ბონუს ქულები'
+    };
+    
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:500">${p.title}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${p.description || ''}</div>
+        </td>
+        <td>${typeLabels[p.discount_type] || p.discount_type}</td>
+        <td class="pts-gold">${p.discount_value}${p.discount_type === 'percentage' ? '%' : p.discount_type === 'points_multiplier' ? '×' : ''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">
+          ${new Date(p.start_date).toLocaleDateString('ka-GE')} —<br/>
+          ${new Date(p.end_date).toLocaleDateString('ka-GE')}
+        </td>
+        <td>
+          <span class="badge badge-${isActive ? 'Gold' : 'Classic'}">${isActive ? 'აქტიური' : p.active ? 'მომავალი' : 'გაუქმებული'}</span>
+        </td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="togglePromotion('${p.id}', ${!p.active})">${p.active ? 'გაუქმება' : 'გააქტიურება'}</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function togglePromotion(id, newStatus) {
+  const { error } = await db.from('promotions').update({ active: newStatus }).eq('id', id);
+  if (!error) {
+    loadPromotions();
+    showToast(newStatus ? 'აქცია გააქტიურდა' : 'აქცია გაუქმდა');
+  }
+}
+
+async function triggerBirthdayBonus() {
+  try {
+    const { data, error } = await db.rpc('check_birthday_bonus');
+    
+    if (error) throw error;
+    
+    const { data: bonusCount } = await db.from('guests')
+      .select('id')
+      .eq('last_birthday_bonus', new Date().toISOString().split('T')[0]);
+    
+    const count = bonusCount ? bonusCount.length : 0;
+    const result = document.getElementById('birthdayResult');
+    result.textContent = count > 0 ? `${count} სტუმარმა მიიღო დაბადების ბონუსი!` : 'დღეს დაბადების დღე არავის აქვს';
+    result.style.display = 'block';
+    setTimeout(() => result.style.display = 'none', 5000);
+    
+    if (count > 0) loadStats();
+  } catch (err) {
+    alert('შეცდომა: ' + err.message);
+  }
+}
+
+async function loadReferrals() {
+  const { data: allRefs } = await db.from('referrals').select('*');
+  const { data: completedRefs } = await db.from('referrals').select('*').eq('status', 'completed');
+  const totalBonus = completedRefs ? completedRefs.reduce((sum, r) => sum + r.referrer_bonus + r.referred_bonus, 0) : 0;
+  
+  document.getElementById('referralStats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">სულ რეფერალები</div><div class="stat-value gold">${allRefs ? allRefs.length : 0}</div></div>
+    <div class="stat-card"><div class="stat-label">დასრულებული</div><div class="stat-value">${completedRefs ? completedRefs.length : 0}</div></div>
+    <div class="stat-card"><div class="stat-label">გაცემული ბონუსი</div><div class="stat-value pts-gold">${totalBonus.toLocaleString()}</div></div>
+  `;
+  
+  const { data } = await db.from('referrals')
+    .select(`
+      *,
+      referrer:referrer_id(name),
+      referred:referred_id(name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(50);
+    
+  const body = document.getElementById('referralsBody');
+  if (!data || !data.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">რეფერალები არ მოიძებნა</td></tr>';
+    return;
+  }
+  
+  body.innerHTML = data.map(r => `
+    <tr>
+      <td style="font-weight:500">${r.referrer?.name || '—'}</td>
+      <td style="font-weight:500">${r.referred?.name || '—'}</td>
+      <td><span class="badge badge-${r.status === 'completed' ? 'Gold' : 'Classic'}">${r.status === 'completed' ? 'დასრულებული' : 'მოლოდინში'}</span></td>
+      <td class="pts-gold">+${(r.referrer_bonus + r.referred_bonus).toLocaleString()}</td>
+      <td style="color:var(--text-muted);font-size:12px">${new Date(r.created_at).toLocaleDateString('ka-GE')}</td>
+    </tr>
+  `).join('');
+}
+
+// Auto-check auth
+if (localStorage.getItem('admin_auth')) {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'flex';
+  loadAll();
+}
+</script>
+</body>
+</html>
