@@ -307,11 +307,33 @@
     <button id="stopScan" class="scan-btn" style="display:none">⏹️ გაჩერება</button>
     <button class="scan-btn" onclick="testConnection()" style="font-size: 12px;">🔧 კავშირის ტესტი</button>
     
-    <div style="margin-top: 16px; font-size: 12px; color: var(--text-muted);">
-      ან შეიყვანეთ ტელეფონის ნომერი:
+    <div style="margin-top: 20px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border);">
+      <div style="font-size: 14px; color: var(--text); margin-bottom: 12px; font-weight: 500;">
+        🔍 ალტერნატიული მეთოდები:
+      </div>
+      
+      <!-- Phone Search -->
+      <div style="margin-bottom: 12px;">
+        <input type="tel" id="manualPhone" placeholder="+995 5XX XXX XXX" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-align: center; margin-bottom: 6px;">
+        <button class="scan-btn" onclick="searchByPhone()" style="width: 100%; font-size: 14px;">📞 ტელეფონით ძებნა</button>
+      </div>
+      
+      <!-- QR Input -->
+      <div style="margin-bottom: 12px;">
+        <input type="text" id="manualQR" placeholder="QR კოდის ტექსტი" style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-align: center; margin-bottom: 6px;">
+        <button class="scan-btn" onclick="processManualQR()" style="width: 100%; font-size: 14px;">🔤 QR ტექსტით</button>
+      </div>
+      
+      <!-- File Upload -->
+      <div style="position: relative; overflow: hidden; display: inline-block; width: 100%;">
+        <input type="file" id="qrImageUpload" accept="image/*" capture="environment" style="position: absolute; left: -9999px;" onchange="processQRImage(this)">
+        <button class="scan-btn" onclick="document.getElementById('qrImageUpload').click()" style="width: 100%; font-size: 14px;">📷 QR ფოტოთი</button>
+      </div>
+      
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: center;">
+        კამერა რომ არ მუშაობს, გამოიყენეთ ზემოთ მეთოდები
+      </div>
     </div>
-    <input type="tel" id="manualPhone" placeholder="+995 5XX XXX XXX" style="margin-top: 8px; width: 200px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-align: center;">
-    <button class="scan-btn" onclick="searchByPhone()" style="margin-top: 8px;">🔍 ძებნა</button>
   </div>
 
   <div class="customer-info" id="customerInfo">
@@ -730,6 +752,82 @@ async function testDatabaseConnection() {
   }
 }
 
+// Manual QR processing functions
+function processManualQR() {
+  const qrText = document.getElementById('manualQR').value.trim();
+  if (!qrText) {
+    showError('შეიყვანეთ QR კოდის ტექსტი');
+    return;
+  }
+  
+  // Process same as scanned QR
+  onScanSuccess(qrText);
+}
+
+async function processQRImage(input) {
+  if (!input.files || !input.files[0]) return;
+  
+  const file = input.files[0];
+  
+  try {
+    showSuccess('QR ფოტო ამუშავდება...');
+    
+    // Create HTML5QrCode instance for file scanning
+    const html5QrCode = new Html5Qrcode("reader");
+    
+    const qrCodeResult = await html5QrCode.scanFile(file, true);
+    
+    showSuccess('QR კოდი წაიკითხა!');
+    onScanSuccess(qrCodeResult);
+    
+  } catch (err) {
+    console.error('QR Image scan failed:', err);
+    showError('QR კოდი ვერ წაიკითხა ამ ფოტოდან. სცადეთ უკეთესი ხარისხის ფოტო.');
+  }
+}
+
+// Quick access buttons for common customers
+function createQuickAccessButtons() {
+  const quickAccess = document.createElement('div');
+  quickAccess.style.cssText = `
+    margin-top: 20px; 
+    padding: 16px; 
+    background: rgba(212, 175, 55, 0.05); 
+    border-radius: 12px; 
+    border: 1px solid rgba(212, 175, 55, 0.2);
+  `;
+  
+  quickAccess.innerHTML = `
+    <div style="font-size: 14px; color: var(--text); margin-bottom: 12px; font-weight: 500;">
+      ⚡ სწრაფი წვდომა (ტესტ სტუმრები):
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <button class="quick-btn" onclick="loadTestCustomer('1')" style="padding: 8px; border-radius: 8px;">
+        გიორგი მ. (Silver)
+      </button>
+      <button class="quick-btn" onclick="loadTestCustomer('2')" style="padding: 8px; border-radius: 8px;">
+        ნინო ბ. (Silver)
+      </button>
+    </div>
+  `;
+  
+  document.querySelector('.scanner-section').appendChild(quickAccess);
+}
+
+async function loadTestCustomer(index) {
+  const testPhones = [
+    '+995599123456', // გიორგი მამულაძე
+    '+995577234567', // ნინო ბერიძე
+    '+995591345678'  // დავით კვარაცხელია
+  ];
+  
+  const phone = testPhones[parseInt(index) - 1];
+  if (phone) {
+    document.getElementById('manualPhone').value = phone;
+    await searchByPhone();
+  }
+}
+
 // Manual test functions
 function testConnection() {
   showSuccess('URL: ' + SUPABASE_URL + '\nKey: ' + (SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.substring(0, 20) + '...' : 'არ არის'));
@@ -746,13 +844,43 @@ async function initialize() {
   if (dbConnected) {
     document.querySelector('.scanner-section').style.opacity = '1';
     document.querySelector('.header p').textContent = 'მზად ქულების დამუშავებისთვის ✅';
+    
+    // Add quick access buttons
+    createQuickAccessButtons();
   } else {
     document.querySelector('.scanner-section').style.opacity = '0.5';
     document.querySelector('.header p').textContent = 'კონფიგურაცია საჭიროა ⚠️';
   }
 }
 
-initialize();
+// Enhanced phone input with formatting
+document.addEventListener('DOMContentLoaded', function() {
+  const phoneInput = document.getElementById('manualPhone');
+  
+  phoneInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    // Auto-add +995 if starts with 5
+    if (value.startsWith('5') && value.length >= 3) {
+      value = '995' + value;
+    }
+    
+    // Format: +995 5XX XXX XXX
+    if (value.startsWith('995')) {
+      value = value.replace(/^995(\d{0,3})(\d{0,3})(\d{0,3}).*/, function(match, p1, p2, p3) {
+        let formatted = '+995';
+        if (p1) formatted += ' ' + p1;
+        if (p2) formatted += ' ' + p2;
+        if (p3) formatted += ' ' + p3;
+        return formatted;
+      });
+    }
+    
+    e.target.value = value;
+  });
+  
+  initialize();
+});
 </script>
 
 </body>

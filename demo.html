@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo სტუმრები - ტესტ მოდი</title>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: linear-gradient(135deg, #d4af37, #ffd700, #b8860b);
+    --bg: radial-gradient(ellipse at center, #0f0f23, #000000);
+    --surface: linear-gradient(145deg, #1a1a2e, #16213e);
+    --border: rgba(212, 175, 55, 0.25);
+    --text: #f8f6f0;
+    --radius: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Geologica', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .container { max-width: 480px; margin: 0 auto; }
+  
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: 500;
+    background: var(--gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .demo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .demo-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+
+  .customer-name {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .customer-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: rgba(248, 246, 240, 0.7);
+  }
+
+  .qr-display {
+    width: 100px;
+    height: 100px;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px auto;
+  }
+
+  .level-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .level-Classic { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+  .level-Silver { background: rgba(192, 192, 192, 0.15); color: #c0c0c0; }
+  .level-Gold { background: rgba(212, 175, 55, 0.15); color: #d4af37; }
+  .level-Platinum { background: rgba(229, 228, 226, 0.15); color: #e5e4e2; }
+
+  .points {
+    font-size: 24px;
+    font-weight: 300;
+    background: var(--gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1 class="title">🎭 Demo სტუმრები</h1>
+    <p>აირჩიეთ ტესტ სტუმარი Scanner-ისთვის</p>
+  </div>
+
+  <div class="demo-card" onclick="selectCustomer('გიორგი მამულაძე', '+995599123456', 'Silver', 3240, 'test-uuid-1')">
+    <div class="customer-name">👨‍💼 გიორგი მამულაძე</div>
+    <div class="customer-details">
+      <div>
+        <div>📞 +995 599 123 456</div>
+        <div class="level-badge level-Silver">Silver</div>
+      </div>
+      <div class="points">3,240 ქულა</div>
+    </div>
+    <div class="qr-display">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=test-uuid-1" width="80" height="80" />
+    </div>
+  </div>
+
+  <div class="demo-card" onclick="selectCustomer('ნინო ბერიძე', '+995577234567', 'Silver', 1820, 'test-uuid-2')">
+    <div class="customer-name">👩‍💼 ნინო ბერიძე</div>
+    <div class="customer-details">
+      <div>
+        <div>📞 +995 577 234 567</div>
+        <div class="level-badge level-Silver">Silver</div>
+      </div>
+      <div class="points">1,820 ქულა</div>
+    </div>
+    <div class="qr-display">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=test-uuid-2" width="80" height="80" />
+    </div>
+  </div>
+
+  <div class="demo-card" onclick="selectCustomer('დავით კვარაცხელია', '+995591345678', 'Classic', 540, 'test-uuid-3')">
+    <div class="customer-name">👨‍🎓 დავით კვარაცხელია</div>
+    <div class="customer-details">
+      <div>
+        <div>📞 +995 591 345 678</div>
+        <div class="level-badge level-Classic">Classic</div>
+      </div>
+      <div class="points">540 ქულა</div>
+    </div>
+    <div class="qr-display">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=test-uuid-3" width="80" height="80" />
+    </div>
+  </div>
+
+  <div style="margin-top: 32px; text-align: center;">
+    <a href="scanner.html" style="
+      display: inline-block;
+      background: var(--gold);
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 8px;
+    ">📱 Scanner-ზე გადასვლა</a>
+    
+    <a href="waiter.html" style="
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 8px;
+    ">🏠 მიმტნის მენიუ</a>
+  </div>
+
+  <div style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; text-align: center; font-size: 12px; color: rgba(248, 246, 240, 0.5);">
+    💡 რჩევა: QR კოდი გადაიღეთ ან ტელეფონის ნომერი დაიმახსოვრეთ Scanner-ისთვის
+  </div>
+</div>
+
+<script>
+function selectCustomer(name, phone, level, points, uuid) {
+  // Save to localStorage for easy access
+  localStorage.setItem('demo_customer', JSON.stringify({
+    name, phone, level, points, uuid
+  }));
+  
+  // Show success message
+  alert(`✅ არჩეული: ${name}\n📞 ${phone}\n\nახლა Scanner-ში ამ ნომრით ძებნა შეგიძლიათ!`);
+  
+  // Optional: redirect to scanner
+  if (confirm('Scanner-ზე გადახვალთ ახლავე?')) {
+    window.location.href = 'scanner.html';
+  }
+}
+
+// Auto-fill scanner if coming from demo
+window.addEventListener('message', function(e) {
+  if (e.data.action === 'getDemoCustomer') {
+    const demo = localStorage.getItem('demo_customer');
+    if (demo) {
+      e.source.postMessage({
+        action: 'demoCustomer',
+        customer: JSON.parse(demo)
+      }, '*');
+    }
+  }
+});
+</script>
+
+</body>
+</html>
