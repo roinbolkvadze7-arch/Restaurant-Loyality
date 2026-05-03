@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR სკანერი - მიმტნისთვის</title>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --gold: linear-gradient(135deg, #d4af37, #ffd700, #b8860b);
+    --gold-solid: #d4af37;
+    --bg: radial-gradient(ellipse at center, #0f0f23, #000000);
+    --surface: linear-gradient(145deg, #1a1a2e, #16213e);
+    --border: rgba(212, 175, 55, 0.25);
+    --text: #f8f6f0;
+    --text-muted: #a8a29e;
+    --success: #10b981;
+    --danger: #ef4444;
+    --radius: 20px;
+    --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Geologica', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 500;
+    background: var(--gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .scanner-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+
+  #reader {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto 20px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .scan-btn {
+    background: var(--gold);
+    border: none;
+    color: #000;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .scan-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+  }
+
+  .scan-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .customer-info {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .customer-name {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .customer-points {
+    font-size: 32px;
+    font-weight: 300;
+    background: var(--gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .customer-level {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  .level-Classic { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+  .level-Silver { background: rgba(192, 192, 192, 0.15); color: #c0c0c0; }
+  .level-Gold { background: rgba(212, 175, 55, 0.15); color: #d4af37; }
+  .level-Platinum { background: rgba(229, 228, 226, 0.15); color: #e5e4e2; }
+
+  .points-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .input-group {
+    flex: 1;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .input-group input, .input-group select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .input-group input:focus, .input-group select:focus {
+    border-color: var(--gold-solid);
+  }
+
+  .points-input {
+    text-align: center;
+    font-size: 24px !important;
+    font-weight: 500;
+  }
+
+  .quick-amounts {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--gold-solid);
+    color: var(--text);
+  }
+
+  .submit-btn {
+    background: var(--success);
+    color: white;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .success-msg, .error-msg {
+    padding: 16px;
+    border-radius: 12px;
+    margin: 16px 0;
+    font-size: 14px;
+    text-align: center;
+    display: none;
+  }
+
+  .success-msg {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .error-msg {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .history-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-top: 24px;
+  }
+
+  .history-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .history-item:last-child {
+    border-bottom: none;
+  }
+
+  .history-customer {
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .history-amount {
+    color: var(--success);
+    font-weight: 500;
+  }
+
+  .history-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🍽️ QR სკანერი</h1>
+    <p>დაასკანერეთ სტუმრის QR კოდი ქულების დასამატებლად</p>
+  </div>
+
+  <div class="scanner-section">
+    <div id="reader"></div>
+    <button id="startScan" class="scan-btn">📷 სკანერის ჩართვა</button>
+    <button id="stopScan" class="scan-btn" style="display:none">⏹️ გაჩერება</button>
+    
+    <div style="margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+      ან შეიყვანეთ ტელეფონის ნომერი:
+    </div>
+    <input type="tel" id="manualPhone" placeholder="+995 5XX XXX XXX" style="margin-top: 8px; width: 200px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-align: center;">
+    <button class="scan-btn" onclick="searchByPhone()" style="margin-top: 8px;">🔍 ძებნა</button>
+  </div>
+
+  <div class="customer-info" id="customerInfo">
+    <div class="customer-name" id="customerName"></div>
+    <div class="customer-points" id="customerPoints"></div>
+    <div class="customer-level" id="customerLevel"></div>
+    
+    <div class="points-form">
+      <div class="input-group">
+        <label>შეკვეთის ღირებულება (₾)</label>
+        <input type="number" id="orderAmount" class="points-input" placeholder="0.00" min="0" step="0.01">
+      </div>
+      
+      <div class="quick-amounts">
+        <button class="quick-btn" onclick="setAmount(10)">10₾</button>
+        <button class="quick-btn" onclick="setAmount(25)">25₾</button>
+        <button class="quick-btn" onclick="setAmount(50)">50₾</button>
+        <button class="quick-btn" onclick="setAmount(100)">100₾</button>
+        <button class="quick-btn" onclick="setAmount(200)">200₾</button>
+      </div>
+
+      <div class="form-row">
+        <div class="input-group">
+          <label>ქულების ტიპი</label>
+          <select id="pointsType">
+            <option value="earn">ქულების დაგროვება (1₾ = 1 ქულა)</option>
+            <option value="spend">ქულების გამოყენება (100 ქულა = 1₾)</option>
+            <option value="bonus">ბონუს ქულები</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>შენიშვნა (სურვილისამებრ)</label>
+        <input type="text" id="orderNote" placeholder="მაგ. სადილი, სპეციალური შეკვეთა...">
+      </div>
+
+      <button class="submit-btn" onclick="processOrder()" id="processBtn">
+        ✅ ქულების დამუშავება
+      </button>
+    </div>
+  </div>
+
+  <div class="success-msg" id="successMsg"></div>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="history-section">
+    <div class="history-title">📊 დღევანდელი ტრანზაქციები</div>
+    <div id="todayTransactions">
+      <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+        ჯერ არ არის ტრანზაქციები
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======= CONFIG — შეცვალე შენი Supabase მონაცემებით =======
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// =========================================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let html5QrCode;
+let currentCustomer = null;
+let todayTransactions = [];
+
+// QR Scanner Functions
+function startScanner() {
+  const config = { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0
+  };
+  
+  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    onScanFailure
+  ).then(() => {
+    document.getElementById('startScan').style.display = 'none';
+    document.getElementById('stopScan').style.display = 'inline-block';
+  }).catch(err => {
+    console.error('Scanner start failed:', err);
+    showError('კამერის ჩართვა ვერ მოხერხდა. გთხოვთ, ნების დართვა გაეცით.');
+  });
+}
+
+function stopScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById('startScan').style.display = 'inline-block';
+      document.getElementById('stopScan').style.display = 'none';
+    });
+  }
+}
+
+async function onScanSuccess(decodedText, decodedResult) {
+  console.log('QR Scanned:', decodedText);
+  stopScanner();
+  
+  // თუ QR კოდში UUID არის
+  if (decodedText.length === 36 && decodedText.includes('-')) {
+    await loadCustomerById(decodedText);
+  } 
+  // თუ ტელეფონის ნომერია
+  else if (decodedText.startsWith('+995') || decodedText.startsWith('995')) {
+    await loadCustomerByPhone(decodedText);
+  }
+  else {
+    showError('არასწორი QR კოდი. გთხოვთ, სწორი კოდი დაასკანერეთ.');
+  }
+}
+
+function onScanFailure(error) {
+  // Silent failure - don't spam console
+}
+
+async function loadCustomerById(customerId) {
+  try {
+    const { data, error } = await db.from('guests').select('*').eq('id', customerId).single();
+    
+    if (error || !data) {
+      showError('სტუმარი ვერ მოიძებნა. შეამოწმეთ QR კოდი.');
+      return;
+    }
+    
+    currentCustomer = data;
+    displayCustomerInfo(data);
+    
+  } catch (err) {
+    console.error('Load customer error:', err);
+    showError('სტუმრის ჩატვირთვისას მოხდა შეცდომა.');
+  }
+}
+
+async function loadCustomerByPhone(phone) {
+  try {
+    const cleanPhone = phone.replace(/\s/g, '');
+    const { data, error } = await db.from('guests').select('*').eq('phone', cleanPhone).single();
+    
+    if (error || !data) {
+      showError('სტუმარი ვერ მოიძებნა ამ ნომრით: ' + phone);
+      return;
+    }
+    
+    currentCustomer = data;
+    displayCustomerInfo(data);
+    
+  } catch (err) {
+    console.error('Load customer by phone error:', err);
+    showError('სტუმრის ძებნისას მოხდა შეცდომა.');
+  }
+}
+
+async function searchByPhone() {
+  const phone = document.getElementById('manualPhone').value.trim();
+  if (!phone) {
+    showError('შეიყვანეთ ტელეფონის ნომერი');
+    return;
+  }
+  await loadCustomerByPhone(phone);
+}
+
+function displayCustomerInfo(customer) {
+  document.getElementById('customerName').textContent = customer.name;
+  document.getElementById('customerPoints').textContent = customer.points.toLocaleString() + ' ქულა';
+  
+  const levelBadge = document.getElementById('customerLevel');
+  levelBadge.textContent = customer.level;
+  levelBadge.className = 'customer-level level-' + customer.level;
+  
+  document.getElementById('customerInfo').style.display = 'block';
+  
+  // Auto-focus amount input
+  document.getElementById('orderAmount').focus();
+}
+
+function setAmount(amount) {
+  document.getElementById('orderAmount').value = amount;
+}
+
+async function processOrder() {
+  if (!currentCustomer) {
+    showError('ჯერ დაასკანერეთ სტუმრის QR კოდი');
+    return;
+  }
+  
+  const amount = parseFloat(document.getElementById('orderAmount').value) || 0;
+  const type = document.getElementById('pointsType').value;
+  const note = document.getElementById('orderNote').value.trim();
+  
+  if (amount <= 0) {
+    showError('შეიყვანეთ სწორი თანხა');
+    return;
+  }
+  
+  try {
+    document.getElementById('processBtn').disabled = true;
+    
+    let pointsDelta = 0;
+    let description = note || '';
+    
+    if (type === 'earn') {
+      // Check for promotions (Tuesday = double points, etc.)
+      const today = new Date();
+      const dayOfWeek = today.getDay() || 7; // 1-7 Monday-Sunday
+      
+      pointsDelta = Math.floor(amount); // 1₾ = 1 point
+      
+      // Tuesday double points
+      if (dayOfWeek === 3) {
+        pointsDelta *= 2;
+        description = (description || 'ქულების დაგროვება') + ' (სამშაბათის ×2)';
+      } else {
+        description = description || 'ქულების დაგროვება';
+      }
+      
+      // Level bonuses
+      if (currentCustomer.level === 'Silver') pointsDelta = Math.floor(pointsDelta * 1.1);
+      if (currentCustomer.level === 'Gold') pointsDelta = Math.floor(pointsDelta * 1.2);
+      if (currentCustomer.level === 'Platinum') pointsDelta = Math.floor(pointsDelta * 1.5);
+      
+    } else if (type === 'spend') {
+      const pointsToSpend = Math.floor(amount * 100); // 1₾ = 100 points
+      if (currentCustomer.points < pointsToSpend) {
+        showError(`არასაკმარისი ქულები. საჭიროა: ${pointsToSpend}, აქვს: ${currentCustomer.points}`);
+        return;
+      }
+      pointsDelta = -pointsToSpend;
+      description = description || 'ქულების გამოყენება';
+      
+    } else if (type === 'bonus') {
+      pointsDelta = Math.floor(amount);
+      description = description || 'ბონუს ქულები';
+    }
+    
+    // Update customer points
+    const newPoints = Math.max(0, currentCustomer.points + pointsDelta);
+    const newLevel = newPoints >= 10000 ? 'Platinum' : newPoints >= 5000 ? 'Gold' : newPoints >= 1000 ? 'Silver' : 'Classic';
+    
+    const { error: updateError } = await db.from('guests')
+      .update({ 
+        points: newPoints, 
+        level: newLevel, 
+        last_visit: new Date().toISOString() 
+      })
+      .eq('id', currentCustomer.id);
+    
+    if (updateError) throw updateError;
+    
+    // Add to history
+    const { error: historyError } = await db.from('points_history')
+      .insert({
+        guest_id: currentCustomer.id,
+        amount: pointsDelta,
+        type: type,
+        description: description
+      });
+    
+    if (historyError) throw historyError;
+    
+    // Success
+    currentCustomer.points = newPoints;
+    currentCustomer.level = newLevel;
+    
+    displayCustomerInfo(currentCustomer);
+    
+    showSuccess(`✅ წარმატებით! ${pointsDelta > 0 ? '+' : ''}${pointsDelta} ქულა\nახალი ბალანსი: ${newPoints} ქულა`);
+    
+    // Clear form
+    document.getElementById('orderAmount').value = '';
+    document.getElementById('orderNote').value = '';
+    
+    // Add to today's transactions
+    addToTodayTransactions(currentCustomer.name, pointsDelta);
+    
+  } catch (err) {
+    console.error('Process order error:', err);
+    showError('ტრანზაქციის დამუშავებისას მოხდა შეცდომა: ' + err.message);
+  } finally {
+    document.getElementById('processBtn').disabled = false;
+  }
+}
+
+function addToTodayTransactions(customerName, points) {
+  const transaction = {
+    customer: customerName,
+    points: points,
+    time: new Date().toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+  };
+  
+  todayTransactions.unshift(transaction);
+  if (todayTransactions.length > 10) todayTransactions.pop();
+  
+  renderTodayTransactions();
+}
+
+function renderTodayTransactions() {
+  const container = document.getElementById('todayTransactions');
+  
+  if (todayTransactions.length === 0) {
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">ჯერ არ არის ტრანზაქციები</div>';
+    return;
+  }
+  
+  container.innerHTML = todayTransactions.map(t => `
+    <div class="history-item">
+      <div>
+        <div class="history-customer">${t.customer}</div>
+        <div class="history-time">${t.time}</div>
+      </div>
+      <div class="history-amount">${t.points > 0 ? '+' : ''}${t.points}</div>
+    </div>
+  `).join('');
+}
+
+function showSuccess(message) {
+  const el = document.getElementById('successMsg');
+  el.textContent = message;
+  el.style.display = 'block';
+  document.getElementById('errorMsg').style.display = 'none';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function showError(message) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = message;
+  el.style.display = 'block';
+  document.getElementById('successMsg').style.display = 'none';
+}
+
+// Event Listeners
+document.getElementById('startScan').addEventListener('click', startScanner);
+document.getElementById('stopScan').addEventListener('click', stopScanner);
+
+// Quick amount on Enter
+document.getElementById('orderAmount').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    processOrder();
+  }
+});
+
+// Phone search on Enter
+document.getElementById('manualPhone').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    searchByPhone();
+  }
+});
+
+// Initialize
+renderTodayTransactions();
+</script>
+
+</body>
+</html>
